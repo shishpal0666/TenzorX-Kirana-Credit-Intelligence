@@ -1,0 +1,36 @@
+lat_rounded,lon_rounded,city,state,city_tier,population_density,footfall_score,competition_count,poi_score
+19.07,72.87,Mumbai,Maharashtra,1,0.95,0.90,14,0.92
+19.08,72.88,Mumbai,Maharashtra,1,0.93,0.88,13,0.90
+19.06,72.86,Mumbai,Maharashtra,1,0.94,0.89,12,0.91
+18.52,73.85,Pune,Maharashtra,1,0.80,0.75,9,0.78
+18.53,73.86,Pune,Maharashtra,1,0.78,0.73,8,0.76
+28.61,77.20,Delhi,Delhi,1,0.92,0.88,15,0.90
+28.62,77.21,Delhi,Delhi,1,0.90,0.85,14,0.88
+28.63,77.22,Delhi,Delhi,1,0.91,0.86,13,0.89
+12.97,77.59,Bangalore,Karnataka,1,0.82,0.78,10,0.80
+12.98,77.60,Bangalore,Karnataka,1,0.81,0.77,9,0.79
+13.08,80.27,Chennai,Tamil Nadu,1,0.78,0.74,11,0.76
+13.09,80.28,Chennai,Tamil Nadu,1,0.77,0.73,10,0.75
+22.57,88.36,Kolkata,West Bengal,1,0.85,0.82,12,0.84
+22.58,88.37,Kolkata,West Bengal,1,0.84,0.80,11,0.82
+17.38,78.48,Hyderabad,Telangana,1,0.80,0.76,10,0.78
+17.39,78.49,Hyderabad,Telangana,1,0.79,0.75,9,0.77
+23.03,72.58,Ahmedabad,Gujarat,2,0.68,0.64,7,0.66
+22.31,73.18,Vadodara,Gujarat,2,0.60,0.56,6,0.58
+21.19,72.83,Surat,Gujarat,2,0.65,0.61,7,0.63
+26.92,75.79,Jaipur,Rajasthan,2,0.62,0.58,6,0.60
+26.85,80.95,Lucknow,Uttar Pradesh,2,0.64,0.60,7,0.62
+26.45,80.33,Kanpur,Uttar Pradesh,2,0.60,0.55,6,0.58
+21.15,79.09,Nagpur,Maharashtra,2,0.58,0.54,5,0.56
+23.26,77.41,Bhopal,Madhya Pradesh,2,0.56,0.52,5,0.54
+22.72,75.86,Indore,Madhya Pradesh,2,0.62,0.58,6,0.60
+30.90,75.85,Ludhiana,Punjab,2,0.60,0.56,6,0.58
+11.01,76.97,Coimbatore,Tamil Nadu,2,0.58,0.54,5,0.56
+17.68,83.21,Visakhapatnam,Andhra Pradesh,2,0.60,0.56,6,0.58
+25.59,85.13,Patna,Bihar,2,0.57,0.53,5,0.55
+24.58,73.70,Udaipur,Rajasthan,3,0.40,0.36,3,0.38
+20.45,85.09,Bhubaneswar,Odisha,3,0.44,0.40,4,0.42
+26.21,78.18,Gwalior,Madhya Pradesh,3,0.38,0.34,3,0.36
+30.32,78.03,Dehradun,Uttarakhand,3,0.42,0.38,4,0.40
+15.85,74.50,Belgaum,Karnataka,3,0.36,0.32,3,0.34
+10.79,76.65,Thrissur,Kerala,3,0.40,0.36,4,0.38
