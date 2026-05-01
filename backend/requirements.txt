@@ -1,0 +1,29 @@
+# TenzorX Kirana Underwriting Backend Dependencies
+
+# Web framework
+flask>=3.0.3
+flask-cors>=4.0.1
+python-dotenv>=1.0.1
+Werkzeug>=3.0.3
+
+# Google Gemini API
+# google-generativeai>=0.7.2
+
+# Computer Vision (CLIP for fraud detection)
+# Install separately if needed: pip install torch torchvision
+# transformers>=4.41.2
+# Pillow>=12.2.0
+
+# EXIF reading
+# exifread>=3.0.0
+
+# ML / Economic Fusion 
+# ⚠️ NOTE: Python 3.14 does not have pre-built binaries for these yet.
+# They will try to compile from C++ source and fail without CMake.
+# Since you are running in DEMO MODE, you do not need them!
+# (If you want to run live mode later, we recommend installing Python 3.10, 3.11, or 3.12)
+# xgboost>=2.0.3
+# scikit-learn>=1.5.0
+# pandas>=2.2.2
+# numpy>=1.26.4
+# scipy>=1.13.1

@@ -1,0 +1,58 @@
+# ── Python ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.whl
+
+# ── Virtual Environments ────────────────────────────────────────────────
+venv/
+env/
+.venv/
+.env
+
+# ── ML Model Artifacts (trained locally / on Colab) ─────────────────────
+backend/models/*.pkl
+backend/models/*.joblib
+*.pkl
+*.joblib
+
+# ── Training Outputs ────────────────────────────────────────────────────
+training/models/
+training/*.png
+training/*.csv
+
+# ── Node.js / Frontend ─────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+.next/
+
+# ── OS Files ────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── IDE ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Logs ────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ── Misc ────────────────────────────────────────────────────────────────
+.env.local
+.env.production
+
+/docs
+/presentation
+.env
