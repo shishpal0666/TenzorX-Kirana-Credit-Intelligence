@@ -1,14 +1,22 @@
 """
 TenzorX Vision Engine
 Extracts structured financial proxy features from kirana store images
-using Gemini 1.5 Flash with strict JSON schema enforcement.
+using Gemini 1.5 Flash REST API with strict JSON schema enforcement.
+
+Uses direct HTTP requests instead of google-generativeai SDK
+to avoid heavy dependency chain on Python 3.14.
 """
 
-import os
 import json
 import base64
+import time
 from pathlib import Path
-import google.generativeai as genai
+import requests
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Gemini REST API endpoint
+# ─────────────────────────────────────────────────────────────────────────────
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MASTER VISION PROMPT — Schema Enforced, Zero-Shot, Expert Role
@@ -80,6 +88,49 @@ def _parse_gemini_response(text: str) -> dict:
     return json.loads(text)
 
 
+def _call_gemini_api(content_parts: list, api_key: str) -> str:
+    """
+    Call Gemini REST API directly with content parts.
+    Returns the text response from Gemini.
+    """
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [{"parts": content_parts}],
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 2048,
+        }
+    }
+
+    url = f"{GEMINI_API_URL}?key={api_key}"
+
+    # Retry with exponential backoff for rate limits (429)
+    max_retries = 3
+    backoff_schedule = [5, 15, 30]  # seconds — free tier needs longer waits
+    for attempt in range(max_retries + 1):
+        response = requests.post(url, json=payload, headers=headers, timeout=60)
+        if response.status_code == 429 and attempt < max_retries:
+            wait = backoff_schedule[attempt]
+            print(f"[Vision] Rate limited (429). Waiting {wait}s before retry... ({attempt + 1}/{max_retries})")
+            time.sleep(wait)
+            continue
+        response.raise_for_status()
+        break
+
+    result = response.json()
+
+    # Extract text from Gemini response
+    candidates = result.get("candidates", [])
+    if not candidates:
+        raise ValueError(f"Gemini returned no candidates: {result}")
+
+    parts = candidates[0].get("content", {}).get("parts", [])
+    if not parts:
+        raise ValueError(f"Gemini returned no content parts: {result}")
+
+    return parts[0].get("text", "")
+
+
 def extract_vision_features(image_paths: list, api_key: str) -> dict:
     """
     Extract financial proxy features from kirana store images (file paths).
@@ -91,9 +142,6 @@ def extract_vision_features(image_paths: list, api_key: str) -> dict:
     Returns:
         dict with structured feature extraction
     """
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
-
     content = []
     for path in image_paths:
         img_b64, mime_type = _encode_image(path)
@@ -102,13 +150,14 @@ def extract_vision_features(image_paths: list, api_key: str) -> dict:
         })
     content.append({"text": VISION_PROMPT})
 
-    response = model.generate_content(content)
-    return _parse_gemini_response(response.text)
+    text = _call_gemini_api(content, api_key)
+    return _parse_gemini_response(text)
 
 
 def extract_vision_features_bytes(image_bytes_list: list, api_key: str) -> dict:
     """
     Extract features from image bytes (Flask file uploads).
+    Automatically limits payload size to avoid Gemini rate limits.
 
     Args:
         image_bytes_list: List of (bytes, mime_type) tuples
@@ -117,19 +166,44 @@ def extract_vision_features_bytes(image_bytes_list: list, api_key: str) -> dict:
     Returns:
         dict with structured feature extraction
     """
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    MAX_IMAGE_SIZE = 800_000  # 800KB per image max
+    MAX_IMAGES = 3            # Send at most 3 images to Gemini
+
+    # Sort by size (smallest first) and take at most MAX_IMAGES
+    sized = [(img_bytes, mime_type, len(img_bytes)) for img_bytes, mime_type in image_bytes_list]
+    sized.sort(key=lambda x: x[2])
+    selected = sized[:MAX_IMAGES]
 
     content = []
-    for img_bytes, mime_type in image_bytes_list:
-        # Normalize mime type
+    total_bytes = 0
+    for img_bytes, mime_type, size in selected:
+        # Skip images that are too large
+        if size > MAX_IMAGE_SIZE:
+            print(f"[Vision] Skipping {size // 1024}KB image (max {MAX_IMAGE_SIZE // 1024}KB)")
+            continue
         if mime_type == "image/jpg":
             mime_type = "image/jpeg"
         img_b64 = base64.b64encode(img_bytes).decode("utf-8")
         content.append({
             "inline_data": {"mime_type": mime_type, "data": img_b64}
         })
+        total_bytes += size
+
+    if not content:
+        # All images were too large — send just the smallest one anyway
+        img_bytes, mime_type, size = sized[0]
+        if mime_type == "image/jpg":
+            mime_type = "image/jpeg"
+        img_b64 = base64.b64encode(img_bytes).decode("utf-8")
+        content.append({
+            "inline_data": {"mime_type": mime_type, "data": img_b64}
+        })
+        total_bytes = size
+        print(f"[Vision] All images over limit. Sending smallest ({size // 1024}KB)")
+
+    print(f"[Vision] Sending {len(content)} image(s), total ~{total_bytes // 1024}KB")
     content.append({"text": VISION_PROMPT})
 
-    response = model.generate_content(content)
-    return _parse_gemini_response(response.text)
+    text = _call_gemini_api(content, api_key)
+    return _parse_gemini_response(text)
+

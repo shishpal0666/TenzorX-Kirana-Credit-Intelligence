@@ -14,10 +14,10 @@ TenzorX estimates a kirana store's daily cash flow using **only 3–5 store imag
 
 | Engine | Technology | Function |
 |---|---|---|
-| 👁️ **Vision** | Gemini 1.5 Flash | Zero-shot extraction of shelf density, SKU diversity, refill signals |
+| 👁️ **Vision** | Gemini 2.5 Flash | Zero-shot extraction of shelf density, SKU diversity, refill signals |
 | 🗺️ **Geo-Spatial** | OpenStreetMap CSV | Footfall proxy, competition density, city-tier classification |
-| 🛡️ **Fraud Defense** | CLIP + EXIF + Logic Gates | 4-layer fraud detection: coverage check, image consistency, timestamps, cross-signals |
-| 📊 **Economic Fusion** | XGBoost Quantile (p10/p50/p90) | NSSO-calibrated ₹ daily revenue ranges with 81.2% coverage probability |
+| 🛡️ **Fraud Defense** | EXIF + Logic Gates | Multi-layer fraud detection: coverage check, timestamps, cross-signals |
+| 📊 **Economic Fusion** | Deterministic Formula Engine | NSSO-calibrated ₹ daily revenue ranges (p10/p50/p90) |
 
 ---
 
@@ -29,19 +29,17 @@ TenzorX/
 ├── .gitignore
 ├── backend/                    ← Flask ML API (Python)
 │   ├── app.py                 ← Main server (/api/underwrite)
-│   ├── vision_engine.py       ← Gemini 1.5 Flash zero-shot extraction
-│   ├── geo_engine.py          ← Pre-computed CSV geo lookup
-│   ├── fraud_engine.py        ← CLIP + EXIF + cross-signal checks
-│   ├── fusion_engine.py       ← XGBoost quantile p10/p50/p90 inference
+│   ├── vision_engine.py       ← Gemini 2.5 Flash zero-shot extraction
+│   ├── geo_engine.py          ← Pre-computed CSV geo lookup (stdlib)
+│   ├── fraud_engine.py        ← EXIF + cross-signal checks
+│   ├── fusion_engine.py       ← NSSO formula engine (p10/p50/p90)
 │   ├── demo_responses.py      ← Pre-crafted DEMO_MODE responses
-│   ├── requirements.txt
+│   ├── requirements.txt       ← Pure-Python dependencies
 │   ├── .env.example
-│   ├── models/                ← Drop trained .pkl files here
-│   │   └── .gitkeep
 │   └── data/
 │       └── geo_lookup.csv     ← 20+ Indian cities pre-computed
 ├── training/
-│   ├── train_model.py         ← XGBoost training (run on Colab)
+│   ├── train_model.py         ← Legacy XGBoost training (reference)
 │   └── precompute_geo.py      ← Overpass API → geo_lookup.csv
 ├── frontend/                   ← Next.js React dashboard
 │   ├── package.json
@@ -122,23 +120,7 @@ You should see:
 
 Verify: open `http://localhost:5000/api/health` → `{ "status": "ok" }`
 
-### 4. Train XGBoost Models (Google Colab)
-
-> Only needed once. Skip this step if using DEMO_MODE.
-
-1. Upload `training/train_model.py` to [Google Colab](https://colab.research.google.com)
-2. Add a cell: `!pip install xgboost scikit-learn pandas numpy matplotlib`
-3. Run all cells (~2 minutes)
-4. Download the 3 output files:
-   ```python
-   from google.colab import files
-   files.download('models/xgb_p10.pkl')
-   files.download('models/xgb_p50.pkl')
-   files.download('models/xgb_p90.pkl')
-   ```
-5. Place them in `backend/models/`
-
-### 5. Switch to Live Mode
+### 4. Switch to Live Mode
 
 ```env
 # In backend/.env

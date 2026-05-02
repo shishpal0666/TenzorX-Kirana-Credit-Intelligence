@@ -3,47 +3,13 @@ TenzorX Fraud Defense Engine
 Four-layer fraud detection:
   1. Image Coverage Check — flag limited view coverage (<3 images)
   2. EXIF Timestamp Clustering — all images within 45s = staged shoot
-  3. CLIP Embedding Consistency — cross-image similarity check
+  3. CLIP Embedding Consistency — (requires torch, skipped when USE_CLIP=false)
   4. Cross-Signal Logic Gates — economic inconsistency detection
+
+Uses only pure Python + exifread — no numpy/PIL/torch required.
 """
 
 import io
-import numpy as np
-from PIL import Image
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CLIP (lazy loaded to avoid 400MB download unless USE_CLIP=true)
-# ─────────────────────────────────────────────────────────────────────────────
-_clip_model = None
-_clip_processor = None
-
-
-def _load_clip():
-    global _clip_model, _clip_processor
-    if _clip_model is None:
-        from transformers import CLIPProcessor, CLIPModel
-        print("[FraudEngine] Loading CLIP model (~400MB on first run)...")
-        _clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-        _clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-        print("[FraudEngine] CLIP loaded.")
-    return _clip_model, _clip_processor
-
-
-def _get_clip_embedding(image_bytes: bytes) -> np.ndarray:
-    """Get normalized CLIP image embedding."""
-    import torch
-    model, processor = _load_clip()
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    inputs = processor(images=image, return_tensors="pt")
-    with torch.no_grad():
-        embedding = model.get_image_features(**inputs)
-    emb = embedding.numpy()[0]
-    return emb / np.linalg.norm(emb)  # normalize
-
-
-def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    return float(np.dot(a, b))  # already normalized
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Check 1: EXIF Timestamp Clustering
@@ -91,46 +57,12 @@ def check_exif_timestamps(image_bytes_list: list) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Check 2: CLIP Image Consistency
-# ─────────────────────────────────────────────────────────────────────────────
-def check_image_consistency(image_bytes_list: list) -> dict:
-    """
-    Use CLIP embeddings to verify all images belong to the same store.
-    Very different images (sim < 0.60) → possible borrowed inventory / fake photos.
-    """
-    if len(image_bytes_list) < 2:
-        return {"consistent": True, "min_similarity": 1.0, "avg_similarity": 1.0, "flags": []}
-
-    embeddings = [_get_clip_embedding(b) for b in image_bytes_list]
-
-    similarities = []
-    for i in range(len(embeddings)):
-        for j in range(i + 1, len(embeddings)):
-            similarities.append(_cosine_similarity(embeddings[i], embeddings[j]))
-
-    min_sim = min(similarities)
-    avg_sim = sum(similarities) / len(similarities)
-
-    flags = []
-    if min_sim < 0.55:
-        flags.append("image_inconsistency")
-    if avg_sim < 0.60:
-        flags.append("possible_borrowed_inventory")
-
-    return {
-        "consistent": min_sim >= 0.55,
-        "min_similarity": round(min_sim, 3),
-        "avg_similarity": round(avg_sim, 3),
-        "flags": flags
-    }
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Check 3: Cross-Signal Logic Gates
+# Check 2: Cross-Signal Logic Gates
 # ─────────────────────────────────────────────────────────────────────────────
 def check_cross_signals(vision_features: dict, geo_features: dict) -> dict:
     """
     Detect economic inconsistencies between vision and geo signals.
+    Pure Python — no numpy needed.
     """
     flags = []
 
@@ -172,13 +104,13 @@ def run_fraud_checks(
     use_clip: bool = False
 ) -> dict:
     """
-    Run all three fraud detection layers and return consolidated risk flags.
+    Run all fraud detection layers and return consolidated risk flags.
 
     Args:
         image_bytes_list: Raw image bytes (no mime type needed here)
         vision_features: Output from vision_engine
         geo_features: Output from geo_engine
-        use_clip: Enable CLIP consistency check (requires model download)
+        use_clip: Enable CLIP consistency check (requires torch — disabled by default)
 
     Returns:
         dict with risk_flags, fraud_risk_level, and per-check details
@@ -207,14 +139,15 @@ def run_fraud_checks(
     all_flags.extend(exif_result["flags"])
     details["exif_check"] = exif_result
 
-    # Layer 2: CLIP consistency (optional)
+    # Layer 2: CLIP consistency (skipped — requires torch/transformers)
     if use_clip and len(image_bytes_list) >= 2:
-        try:
-            clip_result = check_image_consistency(image_bytes_list)
-            all_flags.extend(clip_result["flags"])
-            details["clip_check"] = clip_result
-        except Exception as e:
-            details["clip_check"] = {"error": str(e), "flags": [], "skipped": True}
+        # CLIP requires torch + transformers + PIL — not available on Python 3.14
+        # In production, this would use CLIP embeddings for cross-image verification
+        details["clip_check"] = {
+            "skipped": True,
+            "reason": "CLIP requires torch — not available in current environment",
+            "flags": []
+        }
     else:
         details["clip_check"] = {"skipped": True, "reason": "USE_CLIP=false"}
 
@@ -223,8 +156,14 @@ def run_fraud_checks(
     all_flags.extend(cross_result["flags"])
     details["cross_signal_check"] = cross_result
 
-    # Deduplicate
-    all_flags = list(dict.fromkeys(all_flags))  # preserves order, removes duplicates
+    # Deduplicate (preserves order)
+    seen = set()
+    unique_flags = []
+    for f in all_flags:
+        if f not in seen:
+            seen.add(f)
+            unique_flags.append(f)
+    all_flags = unique_flags
 
     # Risk level
     if len(all_flags) >= 3:

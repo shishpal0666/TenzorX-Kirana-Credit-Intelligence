@@ -7,6 +7,7 @@ all four engines: Vision → Geo → Fraud → Economic Fusion.
 import os
 import json
 import traceback
+import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -153,14 +154,13 @@ def underwrite():
                 "years_operation": int(years_operation) if years_operation else None,
             }
 
-        print("[API] ✅ Underwriting complete.")
+        print("[API] Underwriting complete.")
         return jsonify(response)
 
     except FileNotFoundError as e:
-        # Model files missing
         return jsonify({
             "error": str(e),
-            "fix": "Run training/train_model.py on Colab and place .pkl files in backend/models/"
+            "fix": "Ensure geo_lookup.csv exists in backend/data/"
         }), 503
 
     except json.JSONDecodeError as e:
@@ -168,6 +168,14 @@ def underwrite():
             "error": f"Vision engine returned invalid JSON: {str(e)}",
             "fix": "Check your GEMINI_API_KEY and retry."
         }), 500
+
+    except requests.exceptions.HTTPError as e:
+        if e.response is not None and e.response.status_code == 429:
+            return jsonify({
+                "error": "Gemini API rate limit exceeded. Please wait 10-15 seconds and try again.",
+            }), 429
+        traceback.print_exc()
+        return jsonify({"error": f"API request failed: {str(e)}"}), 500
 
     except Exception as e:
         traceback.print_exc()
@@ -180,9 +188,9 @@ if __name__ == "__main__":
     print("=" * 60)
     print("  TenzorX Kirana Underwriting API")
     print("=" * 60)
-    print(f"  Mode      : {'🎭 DEMO (pre-crafted responses)' if DEMO_MODE else '🧠 LIVE (real AI pipeline)'}")
-    print(f"  Gemini Key: {'✅ Set' if GEMINI_API_KEY else '❌ MISSING — set in .env'}")
-    print(f"  CLIP      : {'✅ Enabled' if USE_CLIP else '⚪ Disabled'}")
+    print(f"  Mode      : {'[DEMO] (pre-crafted responses)' if DEMO_MODE else '[LIVE] (real AI pipeline)'}")
+    print(f"  Gemini Key: {'[OK] Set' if GEMINI_API_KEY else '[X] MISSING — set in .env'}")
+    print(f"  CLIP      : {'[OK] Enabled' if USE_CLIP else '[ ] Disabled'}")
     print(f"  Port      : {port}")
     print(f"  Health    : http://localhost:{port}/api/health")
     print("=" * 60)

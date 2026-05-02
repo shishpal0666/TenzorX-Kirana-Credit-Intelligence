@@ -105,10 +105,10 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap gap-2">
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md glass-sm text-[11px] text-brand-300 border border-brand-500/20">
-                <Brain size={12} /> Gemini 1.5 Flash
+                <Brain size={12} /> Gemini 2.5 Flash
               </span>
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md glass-sm text-[11px] text-brand-300 border border-brand-500/20">
-                📊 XGBoost Quantile
+                📊 NSSO Economic Fusion
               </span>
             </div>
           </div>

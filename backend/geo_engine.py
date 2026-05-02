@@ -2,21 +2,35 @@
 TenzorX Geo-Spatial Engine
 Looks up pre-computed geographic features from a CSV for given GPS coordinates.
 Fast, zero-latency, zero network dependency during demo.
+
+Uses only Python stdlib (csv, math) — no pandas/numpy required.
 """
 
 import os
-import pandas as pd
-import numpy as np
+import csv
+import math
 
 _GEO_DATA = None
 _GEO_CSV_PATH = os.path.join(os.path.dirname(__file__), "data", "geo_lookup.csv")
 
 
-def _load_geo_data() -> pd.DataFrame:
-    """Load and cache geo lookup CSV."""
+def _load_geo_data() -> list:
+    """Load and cache geo lookup CSV as a list of dicts."""
     global _GEO_DATA
     if _GEO_DATA is None:
-        _GEO_DATA = pd.read_csv(_GEO_CSV_PATH)
+        _GEO_DATA = []
+        with open(_GEO_CSV_PATH, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # Convert numeric fields
+                row["lat_rounded"] = float(row["lat_rounded"])
+                row["lon_rounded"] = float(row["lon_rounded"])
+                row["city_tier"] = int(row["city_tier"])
+                row["population_density"] = float(row["population_density"])
+                row["footfall_score"] = float(row["footfall_score"])
+                row["competition_count"] = int(row["competition_count"])
+                row["poi_score"] = float(row["poi_score"])
+                _GEO_DATA.append(row)
     return _GEO_DATA
 
 
@@ -47,43 +61,58 @@ def get_geo_features(lat: float, lon: float) -> dict:
     Returns:
         dict with geo features and match quality indicator
     """
-    df = _load_geo_data()
+    data = _load_geo_data()
 
     # Strategy 1: exact 2-decimal match
     lat_r = round(lat, 2)
     lon_r = round(lon, 2)
-    match = df[(df["lat_rounded"] == lat_r) & (df["lon_rounded"] == lon_r)]
 
-    match_quality = "exact"
+    exact_matches = [
+        row for row in data
+        if row["lat_rounded"] == lat_r and row["lon_rounded"] == lon_r
+    ]
 
-    if len(match) == 0:
-        # Strategy 2: nearest within ~5km
-        df["_dist"] = np.sqrt((df["lat_rounded"] - lat) ** 2 + (df["lon_rounded"] - lon) ** 2)
-        closest = df[df["_dist"] < 0.05].sort_values("_dist")
-        if len(closest) > 0:
-            match = closest.iloc[[0]]
-            match_quality = "approximate"
-
-    if len(match) == 0:
-        # Strategy 3: total fallback
+    if exact_matches:
+        row = exact_matches[0]
         return {
-            "city": "Unknown",
-            "state": "Unknown",
-            "city_tier": 2,
-            "geo_match_quality": "none",
-            **_tier_defaults(2)
+            "city": str(row.get("city", "Unknown")),
+            "state": str(row.get("state", "Unknown")),
+            "city_tier": int(row.get("city_tier", 2)),
+            "population_density": float(row.get("population_density", 0.6)),
+            "footfall_score": float(row.get("footfall_score", 0.5)),
+            "competition_count": int(row.get("competition_count", 6)),
+            "poi_score": float(row.get("poi_score", 0.55)),
+            "geo_match_quality": "exact",
         }
 
-    row = match.iloc[0]
-    city_tier = int(row.get("city_tier", 2))
+    # Strategy 2: nearest city within ~50km
+    best_row = None
+    best_dist = float("inf")
+    for row in data:
+        dist = math.sqrt(
+            (row["lat_rounded"] - lat) ** 2 + (row["lon_rounded"] - lon) ** 2
+        )
+        if dist < 0.50 and dist < best_dist:
+            best_dist = dist
+            best_row = row
 
+    if best_row:
+        return {
+            "city": str(best_row.get("city", "Unknown")),
+            "state": str(best_row.get("state", "Unknown")),
+            "city_tier": int(best_row.get("city_tier", 2)),
+            "population_density": float(best_row.get("population_density", 0.6)),
+            "footfall_score": float(best_row.get("footfall_score", 0.5)),
+            "competition_count": int(best_row.get("competition_count", 6)),
+            "poi_score": float(best_row.get("poi_score", 0.55)),
+            "geo_match_quality": "approximate",
+        }
+
+    # Strategy 3: total fallback
     return {
-        "city": str(row.get("city", "Unknown")),
-        "state": str(row.get("state", "Unknown")),
-        "city_tier": city_tier,
-        "population_density": float(row.get("population_density", 0.6)),
-        "footfall_score": float(row.get("footfall_score", 0.5)),
-        "competition_count": int(row.get("competition_count", 6)),
-        "poi_score": float(row.get("poi_score", 0.55)),
-        "geo_match_quality": match_quality,
+        "city": "Unknown",
+        "state": "Unknown",
+        "city_tier": 2,
+        "geo_match_quality": "none",
+        **_tier_defaults(2)
     }
