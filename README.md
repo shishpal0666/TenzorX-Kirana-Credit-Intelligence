@@ -4,6 +4,8 @@
 
 **Remote cash flow underwriting for kirana stores using Vision & Geo Intelligence — no bank statements, no surveys.**
 
+🌐 **Live Demo:** [https://tenzorx-dashboard.vercel.app/](https://tenzorx-dashboard.vercel.app/)
+
 ---
 
 ## What It Does
