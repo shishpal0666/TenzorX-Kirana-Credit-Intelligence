@@ -12,3 +12,6 @@ requests>=2.31.0
 
 # EXIF reading (pure Python, no C extensions)
 exifread>=3.0.0
+
+# Production WSGI server (for Render/Railway/Heroku)
+gunicorn>=21.2.0
